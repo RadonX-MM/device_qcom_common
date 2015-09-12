@@ -1,227 +1,243 @@
 #!/bin/bash
-#
-# Copyright (c) 2012, The Linux Foundation. All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are
-# met:
-#     * Redistributions of source code must retain the above copyright
-#       notice, this list of conditions and the following disclaimer.
-#     * Redistributions in binary form must reproduce the above
-#       copyright notice, this list of conditions and the following
-#       disclaimer in the documentation and/or other materials provided
-#       with the distribution.
-#     * Neither the name of The Linux Foundation nor the names of its
-#       contributors may be used to endorse or promote products derived
-#       from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED "AS IS" AND ANY EXPRESS OR IMPLIED
-# WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT
-# ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS
-# BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-# BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
-# WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE
-# OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-# IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-#
 
-set -o errexit
+## AOSParadox Build Script ##
 
-usage() {
-cat <<USAGE
-
-Usage:
-    bash $0 <TARGET_PRODUCT> [OPTIONS]
-
-Description:
-    Builds Android tree for given TARGET_PRODUCT
-
-OPTIONS:
-    -c, --clean_build
-        Clean build - build from scratch by removing entire out dir
-
-    -d, --debug
-        Enable debugging - captures all commands while doing the build
-
-    -h, --help
-        Display this help message
-
-    -i, --image
-        Specify image to be build/re-build (bootimg/sysimg/usrimg)
-
-    -j, --jobs
-        Specifies the number of jobs to run simultaneously (Default: 8)
-
-    -k, --kernel_defconf
-        Specify defconf file to be used for compiling Kernel
-
-    -l, --log_file
-        Log file to store build logs (Default: <TARGET_PRODUCT>.log)
-
-    -m, --module
-        Module to be build
-
-    -p, --project
-        Project to be build
-
-    -s, --setup_ccache
-        Set CCACHE for faster incremental builds (true/false - Default: true)
-
-    -u, --update-api
-        Update APIs
-
-    -v, --build_variant
-        Build variant (Default: userdebug)
-
-USAGE
+# Display Script Usage
+usage()
+{
+  echo ""
+  echo "${txtbld}Usage:${txtrst}"
+  echo "  bash build.sh [options] [device] [variant]"
+  echo ""
+  echo "${txtbld}  Options:${txtrst}"
+  echo "    -c# Cleaning options before build:"
+  echo "        1 - make clobber"
+  echo "        2 - make dirty"
+  echo "        3 - make magic"
+  echo "        4 - make kernelclean"
+  echo "    -j# Set jobs"
+  echo "    -l#  Save output in log"
+  echo "	 2 - make"
+  echo "    -s  Sync before build"
+  echo ""
+  echo "${txtbld}  Variants:${txtrst}"
+  echo "    -userdebug (default)"
+  echo "    -user"
+  echo ""
+  echo "${txtbld}  Example:${txtrst}"
+  echo "    bash build.sh -c1 -j18 bacon userdebug"
+  echo ""
+  exit 1
 }
 
-clean_build() {
-    echo -e "\nINFO: Removing entire out dir. . .\n"
-    make clobber
+yn_check()
+{
+ until [[ $yorn = y || $yorn = n ]]; do
+   echo ""
+   read -p "${bldred}Please enter [y/n]: ${txtrst}" yorn
+ done
 }
 
-build_android() {
-    echo -e "\nINFO: Build Android tree for $TARGET\n"
-    make $@ | tee $LOG_FILE.log
+cmmnd_check()
+{
+ if [[ $? -ne 0 ]]; then
+   echo ""
+   echo "${bldred}ERROR:${txtrst} '$cmmnd' failed"
+   exit 1
+ fi
 }
 
-build_bootimg() {
-    echo -e "\nINFO: Build bootimage for $TARGET\n"
-    make bootimage $@ | tee $LOG_FILE.log
-}
+# Prepare output colouring commands
+red=$(tput setaf 1) # Red
+grn=$(tput setaf 2) # Green
+blu=$(tput setaf 4) # Blue
+txtbld=$(tput bold) # Bold
+bldred=${txtbld}${red} # Bold Red
+bldgrn=${txtbld}${grn} # Green
+bldblu=${txtbld}${blu} # Blue
+txtrst=$(tput sgr0) # Reset
 
-build_sysimg() {
-    echo -e "\nINFO: Build systemimage for $TARGET\n"
-    make systemimage $@ | tee $LOG_FILE.log
-}
+if [[ ! -d .repo ]]; then
+  echo ""
+  echo "${bldred}ERROR:${txtrst} No .repo directory found."
+  echo "Is this an Android build tree?"
+  exit 2
+fi
 
-build_usrimg() {
-    echo -e "\nINFO: Build userdataimage for $TARGET\n"
-    make userdataimage $@ | tee $LOG_FILE.log
-}
+if [[ ! -d vendor/aosparadox ]]; then
+  echo ""
+  echo "${bldred}ERROR:${txtrst} No vendor/aosparadox directory found.  Is this an AOSParadox build tree?"
+  exit 3
+fi
 
-build_module() {
-    echo -e "\nINFO: Build $MODULE for $TARGET\n"
-    make $MODULE $@ | tee $LOG_FILE.log
-}
+# Find the output directories
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+thisSRCDIR="${PWD##*/}"
 
-build_project() {
-    echo -e "\nINFO: Build $PROJECT for $TARGET\n"
-    mmm $PROJECT | tee $LOG_FILE.log
-}
+if [[ -z $OUT_DIR_COMMON_BASE ]]; then
+  export OUTDIR="$DIR/out"
+  echo ""
+  echo "${bldblu}WARNING:${txtrst} No external out, using default ($OUTDIR)"
+else
+  export OUTDIR="$OUT_DIR_COMMON_BASE"
+  echo ""
+  echo "${bldblu}WARNING:${txtrst} External out DIR is set ($OUTDIR)"
+fi
 
-update_api() {
-    echo -e "\nINFO: Updating APIs\n"
-    make update-api | tee $LOG_FILE.log
-}
+# Get OS (Linux / Mac OS X)
+IS_DARWIN=$(uname -a | grep Darwin)
 
-setup_ccache() {
-    export CCACHE_DIR=../.ccache
-    export USE_CCACHE=1
-}
+if [[ -n "$IS_DARWIN" ]]; then
+  CPUS=$(sysctl hw.ncpu | awk '{print $2}')
+  DATE=gdate
+else
+  CPUS=$(grep "^processor" /proc/cpuinfo | wc -l)
+  DATE=date
+fi
 
-delete_ccache() {
-    prebuilts/misc/linux-x86/ccache/ccache -C
-    rm -rf $CCACHE_DIR
-}
+export OPT_CPUS=$(bc <<< "($CPUS-1)*2")
+opt_clean=0
+opt_jobs="$OPT_CPUS"
+opt_sync=0
+opt_log=0
 
-create_ccache() {
-    echo -e "\nINFO: Setting CCACHE with 10 GB\n"
-    setup_ccache
-    delete_ccache
-    prebuilts/misc/linux-x86/ccache/ccache -M 10G
-}
-
-# Set defaults
-VARIANT="userdebug"
-JOBS=8
-CCACHE="true"
-
-# Setup getopt.
-long_opts="clean_build,debug,help,image:,jobs:,kernel_defconf:,log_file:,module:,"
-long_opts+="project:,setup_ccache:,update-api,build_variant:"
-getopt_cmd=$(getopt -o cdhi:j:k:l:m:p:s:uv: --long "$long_opts" \
-            -n $(basename $0) -- "$@") || \
-            { echo -e "\nERROR: Getopt failed. Extra args\n"; usage; exit 1;}
-
-eval set -- "$getopt_cmd"
-
-while true; do
-    case "$1" in
-        -c|--clean_build) CLEAN_BUILD="true";;
-        -d|--debug) DEBUG="true";;
-        -h|--help) usage; exit 0;;
-        -i|--image) IMAGE="$2"; shift;;
-        -j|--jobs) JOBS="$2"; shift;;
-        -k|--kernel_defconf) DEFCONFIG="$2"; shift;;
-        -l|--log_file) LOG_FILE="$2"; shift;;
-        -m|--module) MODULE="$2"; shift;;
-        -p|--project) PROJECT="$2"; shift;;
-        -u|--update-api) UPDATE_API="true";;
-        -s|--setup_ccache) CCACHE="$2"; shift;;
-        -v|--build_variant) VARIANT="$2"; shift;;
-        --) shift; break;;
-    esac
-    shift
+while getopts "c:hj:lsu" opt; do
+  case "$opt" in
+      c) opt_clean="$OPTARG" ;;
+      h) usage ;;
+      j) opt_jobs="$OPTARG" ;;
+      l) opt_log=1 ;;
+      s) opt_sync=1 ;;
+      u) usage ;;
+      *) echo "" && echo "${bldred}ERROR:${txtrst} Incorrect parameter"
+	 usage ;;
+  esac
 done
+shift $((OPTIND-1))
 
-# Mandatory argument
-if [ $# -eq 0 ]; then
-    echo -e "\nERROR: Missing mandatory argument: TARGET_PRODUCT\n"
-    usage
-    exit 1
-fi
-if [ $# -gt 1 ]; then
-    echo -e "\nERROR: Extra inputs. Need TARGET_PRODUCT only\n"
-    usage
-    exit 1
-fi
-TARGET="$1"; shift
+device="$1"
+variant="$2"
 
-if [ -z $LOG_FILE ]; then
-    LOG_FILE=$TARGET
-fi
+if [[ -z $device ]]; then
+  echo ""
+  echo "${bldred}ERROR:${txtrst} No device specified"
+  usage
 
-CMD="-j $JOBS"
-if [ "$DEBUG" = "true" ]; then
-    CMD+=" showcommands"
-fi
-if [ -n "$DEFCONFIG" ]; then
-    CMD+=" KERNEL_DEFCONFIG=$DEFCONFIG"
+elif [[ $device -ne bacon || $device -ne falcon || $device -ne titan ]]; then
+  echo ""
+  echo "${bldred}ERROR:${txtrst} Invalid device specified (if you're trying to build AOSParadox for other devices, add it on line 126)"
+  echo ""
+  echo "Supported devices:"
+  echo "		     - bacon (OnePlus One)"
+  echo "		     - falcon (Motorola Moto G 2014)"
+  echo "		     - titan (Motorola Moto G 2013)"
+  exit 4
 fi
 
-if [ "$CCACHE" = "true" ]; then
-    setup_ccache
+if [[ -z $variant ]]; then
+  echo "${blu}WARNING:${txtrst} No build variant specified, 'userdebug' will be used"
+  variant=userdebug
 fi
 
-source build/envsetup.sh
-lunch $TARGET-$VARIANT
+if [[ $device = bacon ]]; then
+  f_device="OnePlus One"
 
-if [ "$CLEAN_BUILD" = "true" ]; then
-    clean_build
-    if [ "$CCACHE" = "true" ]; then
-        create_ccache
-    fi
+elif [[ $device = falcon ]]; then
+  f_device="Motorola Moto G (2014)"
+
+elif [[ $device = titan ]]; then
+  f_device="Motorola Moto G (2013)"
 fi
 
-if [ "$UPDATE_API" = "true" ]; then
-    update_api
+if [[ $opt_clean -eq 1 ]]; then
+  echo ""
+  echo "${bldblu}Cleaning out directory...${txtrst}"
+  cmmnd="make clobber"
+  make clobber &>/dev/null
+  cmmnd_check
+  echo "${bldgrn}SUCCES: ${txtrst}Out is clean"
+
+elif [[ $opt_clean -eq 2 ]]; then
+  echo ""
+  echo "${bldblu}Preparing for dirty...${txtrst}"
+  cmmnd="make dirty"
+  make dirty &>/dev/null
+  cmmnd_check
+  echo "${bldgrn}SUCCES:${txtrst} Out is ready for dirty-building"
+
+elif [[ $opt_clean -eq 3 ]]; then
+  echo ""
+  echo "${bldblu}Preparing your magical adventures...${txtrst}"
+  cmmnd="make magic"
+  make magic &>/dev/null
+  cmmnd_check
+  echo "${bldgrn}SUCCES:${txtrst} Enjoy your magical adventure"
+
+elif [[ $opt_clean -eq 4 ]]; then
+  echo ""
+  echo "${bldblu}Cleaning the kernel components....${txtrst}"
+  cmmnd="make kernelclean"
+  make kernelclean &>/dev/null
+  cmmnd_check
+  echo "${bldgrn}SUCCES:${txtrst} All kernel components have been removed"
 fi
 
-if [ -n "$MODULE" ]; then
-    build_module "$CMD"
+# Sync with latest sources
+if [[ $opt_sync -ne 0 ]]; then
+  echo ""
+  echo "${bldblu}Syncing repository...${txtrst}"
+  cmmnd="repo sync -j$opt_jobs"
+  repo sync -j$opt_jobs
+  cmmnd_check
+  echo "${bldgrn}SUCCES:${txtrst} Repository synced"
+fi
+rm -f "$OUTDIR/target/product/$device/obj/KERNEL_OBJ/.version"
+
+# Get time of startup
+t1=$($DATE +%s)
+
+# Setup environment
+echo ""
+echo "${bldblu}Setting up environment${txtrst}"
+. build/envsetup.sh &>/dev/null
+
+if [[ $? -eq 126 ]]; then
+chmod a+x build/envsetup.sh
+  . build/envsetup.sh &>/dev/null
+fi
+cmmnd="lunch \"full_${device}-$variant\""
+lunch "full_${device}-$variant"
+cmmnd_check
+echo "${bldgrn}SUCCES:${txtrst} Environment setup succesfully"
+
+# Remove system folder (this will create a new build.prop with updated build time and date)
+rm -f "$OUTDIR/target/product/$device/system/build.prop"
+rm -f "$OUTDIR/target/product/$device/system/app/*.odex"
+rm -f "$OUTDIR/target/product/$device/system/framework/*.odex"
+
+# Start compiling
+echo ""
+
+if [[ $opt_log -eq 2 || $opt_log -eq 3 ]]; then
+  echo "${bldblu}Compiling AOSParadox for the $f_device with log ($HOME/make_${device}.log)${txtrst}"
+  cmmnd="make -j$opt_jobs otapackage > $HOME/make_$device.log"
+  make -j$opt_jobs otapackage > "$HOME/make_$device.log"
+  cmmnd_check
+  echo "${bldgrn}SUCCES:${txtrst} Build completed"
+else
+  echo "${bldblu}Compiling AOSParadox for the $f_device ${txtrst}"
+  cmmnd="make -j$opt_jobs otapackage"
+  make -j$opt_jobs otapackage
+  cmmnd_check
+  echo "${bldgrn}SUCCES:${txtrst} Build completed"
 fi
 
-if [ -n "$PROJECT" ]; then
-    build_project
-fi
+# Finished? Get elapsed time
+t2=$($DATE +%s)
 
-if [ -n "$IMAGE" ]; then
-    build_$IMAGE "$CMD"
-fi
+tmin=$(( (t2-t1)/60 ))
+tsec=$(( (t2-t1)%60 ))
 
-build_android "$CMD"
+echo ""
+echo "${bldgrn}Total time elapsed:${txtrst} $tmin minutes $tsec seconds"
+exit 0
