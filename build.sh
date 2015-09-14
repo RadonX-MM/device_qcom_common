@@ -183,11 +183,11 @@ elif [[ $opt_clean -eq 4 ]]; then
 fi
 
 # Sync with latest sources
-if [[ $opt_sync -ne 0 ]]; then
+if [[ $opt_sync -eq 1 ]]; then
   echo ""
   echo "${bldblu}Syncing repository...${txtrst}"
-  cmmnd="repo sync -j$opt_jobs"
-  repo sync -j$opt_jobs
+  cmmnd="repo sync -c -j$opt_jobs"
+  repo sync -c -j$opt_jobs
   cmmnd_check
   echo "${bldgrn}SUCCES:${txtrst} Repository synced"
 fi
