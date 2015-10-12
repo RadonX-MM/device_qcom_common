@@ -6,7 +6,7 @@ QCOM_BOARD_PLATFORMS += msm8226
 
 QSD8K_BOARD_PLATFORMS := qsd8k
 
-TARGET_USE_VENDOR_CAMERA_EXT := true
+#TARGET_USE_VENDOR_CAMERA_EXT := true
 
 ANDROID_COMPILE_WITH_JACK := false
 
@@ -267,22 +267,22 @@ LIB_NL := libnl_2
 LIB_XML2 := libxml2
 
 #LIBCAMERA
-LIBCAMERA := camera.apq8084
-LIBCAMERA += camera.msm8974
-LIBCAMERA += camera.msm8226
-LIBCAMERA += camera.msm8610
-LIBCAMERA += camera.msm8960
-LIBCAMERA += camera.msm8660
-LIBCAMERA += camera.msm7630_surf
-LIBCAMERA += camera.msm7630_fusion
-LIBCAMERA += camera.msm7627a
-LIBCAMERA += libcamera
-LIBCAMERA += libmmcamera_interface
-LIBCAMERA += libmmcamera_interface2
-LIBCAMERA += libmmjpeg_interface
-LIBCAMERA += libqomx_core
-LIBCAMERA += mm-qcamera-app
-LIBCAMERA += camera_test
+#LIBCAMERA := camera.apq8084
+#LIBCAMERA += camera.msm8974
+#LIBCAMERA += camera.msm8226
+#LIBCAMERA += camera.msm8610
+#LIBCAMERA += camera.msm8960
+#LIBCAMERA += camera.msm8660
+#LIBCAMERA += camera.msm7630_surf
+#LIBCAMERA += camera.msm7630_fusion
+#LIBCAMERA += camera.msm7627a
+#LIBCAMERA += libcamera
+#LIBCAMERA += libmmcamera_interface
+#LIBCAMERA += libmmcamera_interface2
+#LIBCAMERA += libmmjpeg_interface
+#LIBCAMERA += libqomx_core
+#LIBCAMERA += mm-qcamera-app
+#LIBCAMERA += camera_test
 LIBCAMERA += org.codeaurora.camera
 
 #LIBCOPYBIT
