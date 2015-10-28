@@ -115,28 +115,11 @@ while getopts "c:hj:lsu" opt; do
 done
 shift $((OPTIND-1))
 
-device="$1"
-variant="$2"
-
-if [[ -z $device ]]; then
+if [[ -z $1 ]]; then
   echo ""
   echo "${bldred}ERROR:${txtrst} No device specified"
   usage
-
-elif [[ $device -ne bacon || $device -ne falcon || $device -ne titan ]]; then
   echo ""
-  echo "${bldred}ERROR:${txtrst} Invalid device specified (if you're trying to build AOSParadox for other devices, add it on line 126)"
-  echo ""
-  echo "Supported devices:"
-  echo "		     - bacon (OnePlus One)"
-  echo "		     - falcon (Motorola Moto G 2014)"
-  echo "		     - titan (Motorola Moto G 2013)"
-  exit 4
-fi
-
-if [[ -z $variant ]]; then
-  echo "${blu}WARNING:${txtrst} No build variant specified, 'userdebug' will be used"
-  variant=userdebug
 fi
 
 if [[ $device = bacon ]]; then
@@ -147,6 +130,19 @@ elif [[ $device = falcon ]]; then
 
 elif [[ $device = titan ]]; then
   f_device="Motorola Moto G (2013)"
+fi
+
+if [[ -z $f_device ]]; then
+  f_device="unsupported device '$1'"
+  echo "${bldblu}WARNING:${txtrst} building for a device that's not officially supported ($1)"
+  echo ""
+fi
+
+if [[ -z $2 || $2 -ne user || $2 -ne userdebug || $2 -ne eng ]]; then
+  echo "${bldblu}WARNING:${txtrst} Invalid build variant specified, using 'userdebug'"
+  variant=userdebug
+else
+  variant=$2
 fi
 
 if [[ $opt_clean -eq 1 ]]; then
@@ -208,7 +204,7 @@ fi
 cmmnd="lunch \"full_${device}-$variant\""
 lunch "full_${device}-$variant"
 cmmnd_check
-echo "${bldgrn}SUCCES:${txtrst} Environment setup succesfully"
+echo "${bldgrn}SUCCES:${txtrst} Build environment setup succesfully"
 
 # Remove system folder (this will create a new build.prop with updated build time and date)
 rm -f "$OUTDIR/target/product/$device/system/build.prop"
@@ -219,9 +215,9 @@ rm -f "$OUTDIR/target/product/$device/system/framework/*.odex"
 echo ""
 
 if [[ $opt_log -eq 2 || $opt_log -eq 3 ]]; then
-  echo "${bldblu}Compiling AOSParadox for the $f_device with log ($HOME/make_${device}.log)${txtrst}"
-  cmmnd="make -j$opt_jobs otapackage > $HOME/make_$device.log"
-  make -j$opt_jobs otapackage > "$HOME/make_$device.log"
+  echo "${bldblu}Compiling AOSParadox for the $f_device with log ($HOME/make_$1.log)${txtrst}"
+  cmmnd="make -j$opt_jobs otapackage > $HOME/make_$1.log"
+  make -j$opt_jobs otapackage > "$HOME/make_$1.log"
   cmmnd_check
   echo "${bldgrn}SUCCES:${txtrst} Build completed"
 else
