@@ -122,17 +122,20 @@ if [[ -z $1 ]]; then
   echo ""
 fi
 
-if [[ $device = bacon ]]; then
+if [[ $1 = bacon ]]; then
   f_device="OnePlus One"
 
-elif [[ $device = falcon ]]; then
+elif [[ $1 = falcon ]]; then
   f_device="Motorola Moto G (2014)"
 
-elif [[ $device = titan ]]; then
+elif [[ $1 = titan ]]; then
   f_device="Motorola Moto G (2013)"
+
+elif [[ $1 = lux ]]; then
+  f_device="Motorola Moto X Play"
 fi
 
-if [[ -z $f_device ]]; then
+if [[ -z $1 ]]; then
   f_device="unsupported device '$1'"
   echo "${bldblu}WARNING:${txtrst} building for a device that's not officially supported ($1)"
   echo ""
@@ -201,8 +204,8 @@ if [[ $? -eq 126 ]]; then
 chmod a+x build/envsetup.sh
   . build/envsetup.sh &>/dev/null
 fi
-cmmnd="lunch \"full_${device}-$variant\""
-lunch "full_${device}-$variant"
+cmmnd="lunch \"full_$1-$variant\""
+lunch "full_$1-$variant"
 cmmnd_check
 echo "${bldgrn}SUCCES:${txtrst} Build environment setup succesfully"
 
