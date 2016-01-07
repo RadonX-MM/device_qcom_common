@@ -10,7 +10,7 @@ LOCAL_MODULE_TAGS := optional
 LOCAL_C_INCLUDES := system/core/init
 LOCAL_CPPFLAGS := \
     -Wall \
-    -Werror -Wno-error=deprecated-declarations \
+    -Werror -Wno-error=deprecated-declarations -Wno-error=pointer-arith \
     -Wno-unused-parameter \
     -DANDROID_TARGET=\"$(TARGET_BOARD_PLATFORM)\"
 LOCAL_SRC_FILES := init_msm.cpp
